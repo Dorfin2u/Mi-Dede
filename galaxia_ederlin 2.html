@@ -1,0 +1,391 @@
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; }
+#universe {
+  width: 100%;
+  height: 600px;
+  background: radial-gradient(ellipse at center, #1a0020 0%, #0d000f 40%, #000 100%);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+#intro-screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 10;
+  background: radial-gradient(ellipse at center, #1a0020 0%, #0a000d 60%, #000 100%);
+  transition: opacity 1.5s ease;
+}
+.intro-text {
+  font-family: Georgia, serif;
+  text-align: center;
+  animation: fadeWords 0.8s ease forwards;
+}
+.intro-line1 {
+  font-size: 18px; color: #e8a0c0;
+  opacity: 0; animation: fadeIn 1s ease 0.5s forwards;
+  letter-spacing: 2px;
+}
+.intro-line2 {
+  font-size: 26px; color: #f5d0e8; font-weight: bold;
+  opacity: 0; animation: fadeIn 1s ease 1.5s forwards;
+  margin: 8px 0;
+}
+.intro-line3 {
+  font-size: 22px; color: #ffd700;
+  opacity: 0; animation: fadeIn 1s ease 2.5s forwards;
+}
+.intro-line4 {
+  font-size: 13px; color: #c080a0; margin-top: 18px;
+  opacity: 0; animation: fadeIn 1s ease 4s forwards;
+  letter-spacing: 1px;
+}
+.click-hint {
+  font-size: 13px; color: #a06080; margin-top: 28px;
+  opacity: 0; animation: pulse 2s ease 5s infinite;
+  letter-spacing: 2px;
+}
+@keyframes fadeIn { to { opacity: 1; } }
+@keyframes pulse {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#name-display {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  pointer-events: none; z-index: 5;
+}
+.galaxy-name {
+  font-family: Georgia, serif;
+  font-size: 62px;
+  font-weight: bold;
+  color: transparent;
+  background: linear-gradient(135deg, #ffd700 0%, #ff69b4 40%, #ffa0d0 70%, #ffd700 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  letter-spacing: 8px;
+  text-shadow: none;
+  filter: drop-shadow(0 0 18px rgba(255,180,210,0.8)) drop-shadow(0 0 35px rgba(255,105,180,0.5));
+  animation: namePulse 3s ease-in-out infinite;
+  opacity: 0;
+  transition: opacity 1.5s ease 0.5s;
+}
+.galaxy-name.visible { opacity: 1; }
+.special-text {
+  font-family: Georgia, serif;
+  font-size: 15px;
+  color: #ffd700;
+  letter-spacing: 3px;
+  margin-top: 10px;
+  opacity: 0;
+  transition: opacity 1.5s ease 1s;
+  text-align: center;
+  filter: drop-shadow(0 0 8px rgba(255,215,0,0.7));
+  animation: glow 2.5s ease-in-out infinite;
+}
+.special-text.visible { opacity: 1; }
+.sub-text {
+  font-family: Georgia, serif;
+  font-size: 13px;
+  color: #e8a0c0;
+  letter-spacing: 4px;
+  margin-top: 6px;
+  opacity: 0;
+  transition: opacity 1.5s ease 1.5s;
+}
+.sub-text.visible { opacity: 1; }
+@keyframes namePulse {
+  0%, 100% { filter: drop-shadow(0 0 18px rgba(255,180,210,0.8)) drop-shadow(0 0 35px rgba(255,105,180,0.5)); }
+  50% { filter: drop-shadow(0 0 30px rgba(255,215,0,0.9)) drop-shadow(0 0 55px rgba(255,105,180,0.7)); }
+}
+@keyframes glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(255,215,0,0.6)); }
+  50% { filter: drop-shadow(0 0 16px rgba(255,215,0,1)); }
+}
+.floating-word {
+  position: absolute;
+  font-family: Georgia, serif;
+  color: rgba(255,182,220,0.85);
+  pointer-events: none;
+  white-space: nowrap;
+  animation: floatWord linear infinite;
+  text-shadow: 0 0 10px rgba(255,105,180,0.6), 0 0 20px rgba(255,215,0,0.3);
+}
+@keyframes floatWord {
+  0% { transform: translateY(0px) rotate(var(--rot)); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 0.8; }
+  100% { transform: translateY(-80px) rotate(var(--rot)); opacity: 0; }
+}
+</style>
+
+<div id="universe">
+  <div id="intro-screen">
+    <div class="intro-text">
+      <div class="intro-line1">✦ &nbsp; Para ti &nbsp; ✦</div>
+      <div class="intro-line2">Perdón por olvidarlo,</div>
+      <div class="intro-line3">Te amo, mi Chichi 💛</div>
+      <div class="intro-line4">— Con todo mi corazón —</div>
+    </div>
+    <div class="click-hint">✦ &nbsp; TOCA PARA VER TU GALAXIA &nbsp; ✦</div>
+  </div>
+
+  <canvas id="galaxyCanvas"></canvas>
+
+  <div id="name-display">
+    <div class="galaxy-name" id="galaxyName">E D E R L I N</div>
+    <div class="special-text" id="specialText">✦ Esto durará hasta el día de nuestra boda ✦</div>
+    <div class="sub-text" id="subText">1 / 5 / 2025</div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('galaxyCanvas');
+const ctx = canvas.getContext('2d');
+const universe = document.getElementById('universe');
+const intro = document.getElementById('intro-screen');
+let W, H, galaxyStarted = false;
+
+function resize() {
+  W = canvas.width = universe.offsetWidth;
+  H = canvas.height = universe.offsetHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); if (galaxyStarted) initParticles(); });
+
+const WORDS = [
+  { text: "Mi Chichi", size: 28 },
+  { text: "Mi Piñita", size: 26 },
+  { text: "Mi Dede", size: 28 },
+  { text: "Mi Futura Esposa", size: 24 },
+  { text: "Te Amo", size: 32 },
+  { text: "Mi Reina", size: 26 },
+  { text: "Mi Amor", size: 28 },
+  { text: "Mi Cielo", size: 24 },
+  { text: "Mi Todo", size: 26 },
+  { text: "Mi Corazón", size: 24 },
+  { text: "Mi Alma", size: 28 },
+  { text: "Mi Luz", size: 30 },
+  { text: "Mi Princesa", size: 24 },
+  { text: "Mi Vida", size: 28 },
+  { text: "Mi Ángel", size: 26 },
+  { text: "Mi Tesoro", size: 24 },
+  { text: "Mi Dulzura", size: 22 },
+  { text: "Mi Esencia", size: 22 },
+];
+
+let stars = [], nebula = [], particles = [], floatingWords = [], spiralAngle = 0;
+
+function randomBetween(a, b) { return a + Math.random() * (b - a); }
+
+function initParticles() {
+  stars = [];
+  for (let i = 0; i < 320; i++) {
+    stars.push({
+      x: Math.random() * W, y: Math.random() * H,
+      r: randomBetween(0.3, 2.2),
+      opacity: randomBetween(0.3, 1),
+      twinkleSpeed: randomBetween(0.008, 0.04),
+      twinkleOffset: Math.random() * Math.PI * 2,
+      color: Math.random() > 0.5 ? '#ffd700' : (Math.random() > 0.5 ? '#ffb6d9' : '#fff'),
+    });
+  }
+
+  nebula = [];
+  const colors = ['#8B006680','#CC006680','#FF69B460','#FFD70050','#C0008080'];
+  for (let i = 0; i < 18; i++) {
+    nebula.push({
+      x: randomBetween(0.05, 0.95), y: randomBetween(0.05, 0.95),
+      rx: randomBetween(60, 200), ry: randomBetween(40, 140),
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rot: randomBetween(0, Math.PI),
+    });
+  }
+
+  particles = [];
+  for (let i = 0; i < 180; i++) {
+    spawnParticle();
+  }
+}
+
+function spawnParticle() {
+  const angle = Math.random() * Math.PI * 2;
+  const arm = Math.floor(Math.random() * 3);
+  const dist = randomBetween(20, Math.min(W, H) * 0.48);
+  const armAngle = angle + arm * (Math.PI * 2 / 3) + dist * 0.004;
+  const spread = randomBetween(-25, 25);
+  const px = W / 2 + Math.cos(armAngle) * dist + Math.cos(armAngle + Math.PI / 2) * spread;
+  const py = H / 2 + Math.sin(armAngle) * dist * 0.55 + Math.sin(armAngle + Math.PI / 2) * spread;
+  const colors = ['#ffd700', '#ff69b4', '#ffb6e8', '#ff94cc', '#ffe066', '#e87cbe'];
+  particles.push({
+    x: px, y: py,
+    vx: randomBetween(-0.15, 0.15),
+    vy: randomBetween(-0.1, 0.1),
+    r: randomBetween(1, 3.5),
+    opacity: randomBetween(0.4, 1),
+    color: colors[Math.floor(Math.random() * colors.length)],
+    twinkle: randomBetween(0.01, 0.05),
+    phase: Math.random() * Math.PI * 2,
+    orbitR: dist,
+    orbitAngle: armAngle,
+    orbitSpeed: randomBetween(0.0002, 0.0008) * (Math.random() > 0.5 ? 1 : -1),
+  });
+}
+
+function drawGalaxy(t) {
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.fillStyle = 'rgba(10,0,15,1)';
+  ctx.fillRect(0, 0, W, H);
+
+  nebula.forEach(n => {
+    ctx.save();
+    ctx.translate(n.x * W, n.y * H);
+    ctx.rotate(n.rot + t * 0.0003);
+    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, n.rx);
+    grad.addColorStop(0, n.color);
+    grad.addColorStop(1, 'transparent');
+    ctx.scale(1, n.ry / n.rx);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, n.rx, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+
+  stars.forEach(s => {
+    const twinkle = 0.5 + 0.5 * Math.sin(t * s.twinkleSpeed + s.twinkleOffset);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = s.color;
+    ctx.globalAlpha = s.opacity * (0.4 + 0.6 * twinkle);
+    ctx.fill();
+
+    if (s.r > 1.4 && twinkle > 0.8) {
+      ctx.globalAlpha = 0.3 * twinkle;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2);
+      ctx.fillStyle = s.color;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  });
+
+  spiralAngle = t * 0.0004;
+
+  for (let arm = 0; arm < 3; arm++) {
+    for (let i = 0; i < 80; i++) {
+      const dist = (i / 80) * Math.min(W, H) * 0.48;
+      const angle = spiralAngle + arm * (Math.PI * 2 / 3) + i * 0.09;
+      const x = W / 2 + Math.cos(angle) * dist;
+      const y = H / 2 + Math.sin(angle) * dist * 0.55;
+      const sz = randomBetween(0.5, 2);
+      ctx.beginPath();
+      ctx.arc(x, y, 1, 0, Math.PI * 2);
+      const hue = arm === 0 ? '#ffb6d9' : arm === 1 ? '#ffd700' : '#ff80c8';
+      ctx.fillStyle = hue;
+      ctx.globalAlpha = 0.25 * (1 - i / 80) + 0.05;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  const corePink = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, 80);
+  corePink.addColorStop(0, 'rgba(255,220,240,0.9)');
+  corePink.addColorStop(0.3, 'rgba(255,130,190,0.5)');
+  corePink.addColorStop(0.7, 'rgba(180,0,100,0.15)');
+  corePink.addColorStop(1, 'transparent');
+  ctx.beginPath();
+  ctx.arc(W/2, H/2, 80, 0, Math.PI * 2);
+  ctx.fillStyle = corePink;
+  ctx.fill();
+
+  const coreGold = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, 35);
+  coreGold.addColorStop(0, 'rgba(255,240,180,1)');
+  coreGold.addColorStop(0.5, 'rgba(255,200,80,0.6)');
+  coreGold.addColorStop(1, 'transparent');
+  ctx.beginPath();
+  ctx.arc(W/2, H/2, 35, 0, Math.PI * 2);
+  ctx.fillStyle = coreGold;
+  ctx.fill();
+
+  particles.forEach((p, i) => {
+    p.orbitAngle += p.orbitSpeed;
+    p.x = W / 2 + Math.cos(p.orbitAngle + spiralAngle) * p.orbitR;
+    p.y = H / 2 + Math.sin(p.orbitAngle + spiralAngle) * p.orbitR * 0.55;
+    const tw = 0.5 + 0.5 * Math.sin(t * p.twinkle + p.phase);
+
+    if (p.r > 2 && tw > 0.7) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2);
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
+      g.addColorStop(0, p.color + 'AA');
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.globalAlpha = tw * 0.5;
+      ctx.fill();
+    }
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = p.opacity * (0.5 + 0.5 * tw);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+}
+
+let wordInterval;
+function launchWords() {
+  wordInterval = setInterval(() => {
+    const wordData = WORDS[Math.floor(Math.random() * WORDS.length)];
+    const div = document.createElement('div');
+    div.className = 'floating-word';
+    const side = Math.random();
+    const rot = randomBetween(-12, 12);
+    div.style.cssText = `
+      left: ${randomBetween(3, 85)}%;
+      bottom: ${randomBetween(5, 55)}%;
+      font-size: ${wordData.size}px;
+      --rot: ${rot}deg;
+      animation-duration: ${randomBetween(5, 9)}s;
+      color: ${Math.random() > 0.5 ? 'rgba(255,200,230,0.9)' : 'rgba(255,215,0,0.85)'};
+      font-weight: ${wordData.size >= 28 ? 'bold' : 'normal'};
+    `;
+    div.textContent = wordData.text;
+    universe.appendChild(div);
+    setTimeout(() => div.remove(), 10000);
+  }, 1200);
+}
+
+let animFrame;
+function animate(t) {
+  drawGalaxy(t);
+  animFrame = requestAnimationFrame(animate);
+}
+
+function startGalaxy() {
+  if (galaxyStarted) return;
+  galaxyStarted = true;
+
+  intro.style.opacity = '0';
+  setTimeout(() => {
+    intro.style.display = 'none';
+    initParticles();
+    requestAnimationFrame(animate);
+    setTimeout(() => {
+      document.getElementById('galaxyName').classList.add('visible');
+      document.getElementById('specialText').classList.add('visible');
+      document.getElementById('subText').classList.add('visible');
+      launchWords();
+    }, 300);
+  }, 1500);
+}
+
+intro.addEventListener('click', startGalaxy);
+setTimeout(startGalaxy, 7000);
+</script>
